@@ -82,9 +82,17 @@ void Resizer::resizeCL(const std::string& inputDir, const std::string& outputDir
         {
             readProf += Profiler::stop(r);
 
+            unsigned long time1 = 0;
+            unsigned long time2 = 0;
+            unsigned long time3 = 0;
+
             auto res = Profiler::start();
-            ocl.resizeImage(imageIn, imageOut, ratio, samplingAlgo);
+            ocl.resizeImage(imageIn, imageOut, ratio, samplingAlgo, time1, time2, time3);
             resizeProf += Profiler::stop(res);
+
+            profiler["time1"] += time1;
+            profiler["time2"] += time2;
+            profiler["time3"] += time3;
 
             std::string outFile = outDir + files[i].substr(files[0].find_last_of("/\\"));
 
@@ -100,6 +108,7 @@ void Resizer::resizeCL(const std::string& inputDir, const std::string& outputDir
 }
 
 
+#include <opencv2/imgcodecs/imgcodecs.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>

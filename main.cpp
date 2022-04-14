@@ -10,6 +10,7 @@
 #include <vector>
 #include "Resizer.h"
 
+// -output E:\kpdf\fastimage\opencl-resizer\testImages\output -input E:\kpdf\fastimage\opencl-resizer\testImages\input -ratio 0.8 -quality 90 -algo bicubic
 int main(int argc, const char * argv[])
 {
     if (argc == 1)
@@ -71,6 +72,8 @@ int main(int argc, const char * argv[])
              std::unordered_map<std::string, float>& stats2,
              const std::string& key)
     {
+        std::cout << "--CL: " << stats1[key] << "--CV: " << stats2[key] << std::endl;
+
         auto ratio = (int)(100 * stats1[key] / stats2[key] - 100);
 
         if (ratio > 0)
@@ -93,7 +96,12 @@ int main(int argc, const char * argv[])
     std::cout << "Operations: " << profilerCV["op"] << std::endl;
     std::cout << "Read: " << getRatio(profilerCL, profilerCV, "read") << std::endl;
     std::cout << "Write: " << getRatio(profilerCL, profilerCV, "write") << std::endl;
-    std::cout << "Resize: " << getRatio(profilerCL, profilerCV, "resize") << std::endl;
+    std::cout << "Resize: " << getRatio(profilerCL, profilerCV, "resize") << 
+        "      ---  " << profilerCL["resize"] << "  " <<
+        profilerCL["time1"] << " " <<
+        profilerCL["time2"] << " " <<
+        profilerCL["time3"] << " " <<
+        std::endl;
     std::cout << "TotalCV: " << totalCV / profilerCV["op"] << std::endl;
     std::cout << "TotalCL: " << totalCL  / profilerCL["op"] << std::endl;
 

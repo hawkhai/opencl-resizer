@@ -6,14 +6,19 @@
 #include <iostream>
 #include <set>
 #include <cassert>
+#include <assert.h>
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
 #include "../Utils.h"
 #include "../Image.h"
+#include "Profiler.h"
 
 const std::string oclManager::preferredDeviceVendors[] =
 {
     "NVIDIA",
     "AMD",
-    "Advanced Micro Devices"
+    "Advanced Micro Devices",
+    "Intel(R) Corporation",
 };
 
 void oclManager::setupPlatform(DeviceType type)
@@ -32,7 +37,9 @@ void oclManager::setupPlatform(DeviceType type)
             {
                 for (const auto& deviceVendor : preferredDeviceVendors)
                 {
-                    if (d.getInfo<CL_DEVICE_VENDOR>().find(deviceVendor) != std::string::npos)
+                    auto temp = d.getInfo<CL_DEVICE_VENDOR>();
+                    auto name = d.getInfo<CL_DEVICE_NAME>(); // Intel(R) HD Graphics 630
+                    if (temp.find(deviceVendor) != std::string::npos)
                     {
                         m_platform = p;
                         m_device = d;
@@ -46,11 +53,12 @@ void oclManager::setupPlatform(DeviceType type)
             continue;
         }
     }
+    assert(m_device.get());
 }
 
 bool oclManager::createContext(DeviceType type)
 {
-    try
+//    try
     {
         setupPlatform(type);
 
@@ -63,7 +71,7 @@ bool oclManager::createContext(DeviceType type)
 
         return true;
     }
-    catch(...)
+ //   catch(...)
     {
         std::cerr << "Failed to create an OpenCL context!" << std::endl << std::endl;
         return false;
@@ -86,9 +94,21 @@ bool oclManager::addKernelProgram(const std::string &kernel)
     return true;
 }
 
-void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std::string& programEntry)
+void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std::string& programEntry,
+    unsigned long& time1,
+    unsigned long& time2,
+    unsigned long& time3
+    )
 {
     assert(ratio > 0);
+
+
+
+    clock_t time1x = 0;
+    clock_t time2x = 0;
+    clock_t time3x = 0;
+
+    time1x = Profiler::start();
 
     try
     {
@@ -97,6 +117,8 @@ void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std
         // Create an OpenCL Image / texture and transfer data to the device
         cl::Image2D clImageIn = cl::Image2D(m_context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, imageFormat,
                                             in.getWidth(), in.getHeight(), 0, (void *) in.getData().data());
+
+        time1 = Profiler::stop(time1x);
 
         struct CLImage
         {
@@ -123,6 +145,8 @@ void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std
         kernel.setArg(4, ratio);
         kernel.setArg(5, ratio);
 
+        time2x = Profiler::start();
+
         m_queue.enqueueNDRangeKernel(
                 kernel,
                 cl::NullRange,
@@ -130,8 +154,10 @@ void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std
                 cl::NullRange
         );
 
-        cl::size_t<3> origin;
-        cl::size_t<3> region;
+        time2 = Profiler::stop(time2x);
+
+        cl::detail::size_t_array origin;
+        cl::detail::size_t_array region;
         origin[0] = 0;
         origin[1] = 0;
         origin[2] = 0;
@@ -141,7 +167,12 @@ void oclManager::resizeImage(const Image& in, Image& out, float ratio, const std
 
         const unsigned int size(sImageOut.Width * sImageOut.Height * in.getChannels());
         out.setData(new unsigned char[size], size, sImageOut.Width, sImageOut.Height);
+
+        time3x = Profiler::start();
+
         m_queue.enqueueReadImage(clImageOut, CL_TRUE, origin, region, 0, 0, (void *) out.getData().data());
+
+        time3 = Profiler::stop(time3x);
     }
     catch (cl::Error& err)
     {

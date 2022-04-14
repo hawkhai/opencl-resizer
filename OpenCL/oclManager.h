@@ -9,7 +9,8 @@
 #if defined(__APPLE__) || defined(__MACOSX)
 #include "cl.hpp"
 #else
-    #include <CL/cl.hpp>
+#include <CL/cl.h>
+#include <CL/opencl.hpp>
 #endif
 
 #include <string>
@@ -29,7 +30,11 @@ public:
 
     bool addKernelProgram(const std::string& kernel);
 
-    void resizeImage(const Image& in, Image& out, float ratio, const std::string& programEntry);
+    void resizeImage(const Image& in, Image& out, float ratio, const std::string& programEntry,
+        unsigned long& time1,
+        unsigned long& time2,
+         unsigned long& time3
+        );
 
 protected:
 
